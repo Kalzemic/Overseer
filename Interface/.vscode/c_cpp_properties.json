@@ -1,0 +1,33 @@
+{
+    "defines": [
+        "__KERNEL__",
+        "MODULE",
+        "KBUILD_MODNAME=\"hello_module\"",
+        "__init="
+    ],
+    "configurations": [
+        {
+
+
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/lib/modules/6.15.2-arch1-1/build/include",
+                "/lib/modules/6.15.2-arch1-1/build/include/uapi",
+                "/lib/modules/6.15.2-arch1-1/build/include/generated",
+                "/lib/modules/6.15.2-arch1-1/build/arch/x86/include",
+                "/lib/modules/6.15.2-arch1-1/build/arch/x86/include/generated",
+                "/lib/modules/6.15.2-arch1-1/build/arch/x86/include/uapi",
+                "/lib/modules/6.15.2-arch1-1/build/arch/x86/include/generated/uapi"
+
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-clang-x64",
+            "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+}

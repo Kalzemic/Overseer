@@ -1,0 +1,14 @@
+OverNet/prototyping/
+OverNet/Data/
+OverNet/model
+*.pt
+OverNet/training/bert/
+OverNet/training/bert_2/
+OverNet/training/gemm2/
+OverNet/training/hpl/
+OverNet/training/mlperf/
+OverNet/training/mlperf2/
+OverNet/training/polybench_gemm/
+drivers/
+*.o
+*/overseer_collector
