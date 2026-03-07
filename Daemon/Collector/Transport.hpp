@@ -2,7 +2,7 @@
 #define _TRANSPORT_
 
 #define INPUT_OFFSET 0
-#define BATCH_SIZE 64
+#include "defines.h"
 #include <stdint.h>
 #include <stdint.h>
 #include <sys/socket.h>
@@ -16,7 +16,8 @@ struct FaultReport
 {
     int32_t pid;
     uint64_t addrs[BATCH_SIZE];
-};
+    uint64_t ips[BATCH_SIZE];
+} __attribute__((packed));
 
 class ITransporter
 {

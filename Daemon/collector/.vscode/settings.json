@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "types.h": "c",
-        "faultevent.bpf.h": "c",
-        "bpf_tracing.h": "c",
-        "vmlinux.h": "c",
-        "stdexcept": "cpp"
-    }
-}

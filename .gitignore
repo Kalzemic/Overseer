@@ -8,7 +8,9 @@ OverNet/training/gemm2/
 OverNet/training/hpl/
 OverNet/training/mlperf/
 OverNet/training/mlperf2/
+OverNet/training/mlperf_ip/
 OverNet/training/polybench_gemm/
 drivers/
 *.o
 */overseer_collector
+*.vscode

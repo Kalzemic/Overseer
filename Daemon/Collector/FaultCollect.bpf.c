@@ -22,6 +22,7 @@ int fault_callback(struct page_fault_ctx *ctx)
    eve->pid = bpf_get_current_pid_tgid() >> 32;
    eve->cgroup_id = bpf_get_current_cgroup_id();
    eve->addr = ctx->address;
+   eve->ip = ctx->ip;
 
    bpf_ringbuf_submit(eve, 0);
    return -1;

@@ -148,7 +148,7 @@ int TestTransporter::sendReport(const FaultReport &report)
     {
         if (report.addrs[i] == 0)
             break; // stop if array not fully filled
-        std::cout << "  0x" << std::hex << report.addrs[i] << std::dec << "\n";
+        std::cout << "Page: 0x" << std::hex << report.addrs[i] << std::dec << "   IP: 0x" << std::hex << report.ips[i] << std::dec << "\n";
     }
     std::cout << "===================\n";
     return sizeof(report);

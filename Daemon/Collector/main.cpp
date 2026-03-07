@@ -23,14 +23,16 @@ int handle_fault(void *ctx, void *data, size_t data_sz)
 
     auto &batch = hctx->inputManager[eve.pid];
 
-    batch.addrs[batch.offset++] = eve.addr;
+    batch.addrs[batch.offset] = eve.addr;
+    batch.ips[batch.offset] = eve.ip;
+    batch.offset++;
 
     if (batch.offset >= BATCH_SIZE)
     {
         FaultReport report;
         report.pid = eve.pid;
         memcpy(report.addrs, batch.addrs, sizeof(batch.addrs));
-
+        memcpy(report.ips, batch.ips, sizeof(batch.ips));
         int sent = hctx->transport->sendReport(report);
 
         if (sent < 0)
@@ -48,6 +50,11 @@ int main(int argc, char **argv)
         std::cout << "please provide cgroup id\n";
         return -1;
     }
+    if (argc < 4)
+    {
+        std::cout << "must provide ip and port for overnet\n";
+        return -1;
+    }
 
     uint64_t cgroup_id;
     try
@@ -60,16 +67,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // if (argc > 2)
-    // {
-    //     std::string jetson_ip(argv[2]);
-    //     int jetson_port = std::stoi(argv[3]);
-    // }
+    std::string overnet_ip(argv[2]);
+    int overnet_port = std::stoi(argv[3]);
 
-    TestTransporter transporter;
+    SocketTransporter transporter(overnet_ip, overnet_port);
 
-    // create proper context for fault handling
-    HandlerCtx hctx{cgroup_id, &transporter};
+    HandlerCtx hctx{cgroup_id, &transporter, {}};
 
     auto skel = FaultCollect_bpf__open_and_load();
     if (!skel)

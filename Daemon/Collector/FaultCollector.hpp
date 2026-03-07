@@ -1,12 +1,13 @@
 #ifndef _FAULTCOLLECTOR_
 #define _FAULTCOLLECTOR_
 #include <unordered_map>
-#define BATCH_SIZE 64
+#include "defines.h"
 
 #include "Transport.hpp"
 struct Batch
 {
     unsigned long addrs[BATCH_SIZE];
+    unsigned long ips[BATCH_SIZE];
     int offset;
 };
 
