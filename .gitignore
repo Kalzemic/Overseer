@@ -16,3 +16,4 @@ CMakeCache.txt
 go.mod
 __pycache__
 *.png
+*.onnx
