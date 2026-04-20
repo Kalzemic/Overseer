@@ -26,6 +26,7 @@ SocketTransporter::SocketTransporter(std::string ip, int port)
 
 int SocketTransporter::sendReport(const FaultReport &report)
 {
+
     int sent = sendto(this->sockfd,
                       &report,
                       sizeof(report), 0,

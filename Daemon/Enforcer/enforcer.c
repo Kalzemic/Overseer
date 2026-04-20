@@ -6,13 +6,10 @@ MODULE_AUTHOR("Kalzemic");
 MODULE_DESCRIPTION("Overseer Enforcer");
 MODULE_VERSION("0.1");
 
-static __u64 cgroup_id = 0;
 static int port = 9081;
 
-module_param(cgroup_id, ullong, 0444);
 module_param(port, int, 0444);
 
-MODULE_PARM_DESC(cgroup_id, "cgroup id of the target container");
 MODULE_PARM_DESC(port, "UDP port to listen for prefetch hints");
 static DECLARE_KFIFO(payload_fifo, struct prefetch_payload, FIFO_SIZE);
 static struct task_struct *server_thread = NULL;

@@ -3,7 +3,7 @@ import numpy as np
 from Data import MemDataset
 from tqdm import tqdm
 
-DATAPATH =  './hpl/hpl_data_test.bin'
+DATAPATH =  './data/hpl/hpl_data_val.bin'
 
 def entropy_check():
     dataset = MemDataset([DATAPATH], shuffle_files=False)

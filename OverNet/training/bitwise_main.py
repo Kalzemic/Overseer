@@ -7,25 +7,22 @@ from tqdm import tqdm
 from PageLoss import PageLoss
 from OverNetTransformer import OverNetTransformer
 from torch.optim.lr_scheduler import OneCycleLR
-HPL_TRAIN = './hpl/hpl_data_train.bin'
-HPL_VAL = './hpl/hpl_data_val.bin'
+HPL_TRAIN = './data/hpl/hpl_data_train.bin'
+HPL_VAL = './data/hpl/hpl_data_val.bin'
 
-BERT_TRAIN = './bert/bert_data_train.bin'
-BERT_VAL = './bert/bert_data_test.bin'
+BERT_TRAIN = './data/bert/bert_data_train.bin'
+BERT_VAL = './data/bert/bert_data_test.bin'
 
-# POLYBENCH_TRAIN = './polybench_gemm/gemm_large_val.bin'
-# POLYBENCH_VAL = './polybench_gemm/gemm_large_test.bin'
-MLPERF_TRAIN ={f'MLPERF{j}_TRAIN_0{i}':f'./mlperf/mlperf_train_0{i}.bin' for i in range(10) for j in ['',2]}
+
+MLPERF_TRAIN ={f'MLPERF{j}_TRAIN_0{i}':f'./data/mlperf/mlperf_train_0{i}.bin' for i in range(10) for j in ['',2]}
 #MLPERF2_TRAIN={f'MLPERF2_TRAIN_0{i}':f'./mlperf2/mlperf2_train_0{i}.bin' for i in range(10)}
-MLPERF_VAL = './mlperf/mlperf_val.bin'
-MLPERF2_VAL = './mlperf2/mlperf2_val.bin'
-
-# GEMM2_TRAIN_08 = './gemm2/gemm2_train_08.bin'
-# GEMM2_VAL = './gemm2/gemm2_val.bin'
+MLPERF_VAL = './data/mlperf/mlperf_val.bin'
+MLPERF2_VAL = './data/mlperf2/mlperf2_val.bin'
 
 
-BERT_2_TRAIN ={f'BERT2_TRAIN_0{i}':f'./bert_2/bert_2_train_0{i}.bin' for i in range(10)}
-BERT_2_VAL = './bert_2/bert_2_val.bin'
+
+BERT_2_TRAIN ={f'BERT2_TRAIN_0{i}':f'./data/bert_2/bert_2_train_0{i}.bin' for i in range(10)}
+BERT_2_VAL = './data/bert_2/bert_2_val.bin'
 
 
 lr = 1e-4

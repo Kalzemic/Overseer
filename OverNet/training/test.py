@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from Data import MemDataset
-from OverNet import OverNet
+from OverNetMamba import OverNet
 from tqdm import tqdm
 from OverNetTransformer import OverNetTransformer
 HPL_VAL = './hpl/hpl_data_test.bin'

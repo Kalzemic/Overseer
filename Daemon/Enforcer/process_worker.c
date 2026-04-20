@@ -81,11 +81,9 @@ static int worker_run(void *data)
     struct process_worker *worker = (struct process_worker *)data;
     __u64 addrs[BATCH_SIZE];
     int i;
-    kthread_use_mm(worker->mm);
 
     while (!kthread_should_stop())
     {
-
         wait_event(worker->wait, kthread_should_stop() || !kfifo_is_empty(&worker->addr_fifo));
 
         if (kthread_should_stop())
@@ -93,33 +91,32 @@ static int worker_run(void *data)
 
         while (kfifo_out(&worker->addr_fifo, addrs, BATCH_SIZE) == BATCH_SIZE)
         {
-            struct vm_area_struct *vma;
             for (i = 0; i < BATCH_SIZE; i++)
             {
+                struct page *page;
+                int ret;
                 unsigned long addr = addrs[i];
 
                 if (addr == 0 || addr > USERSPACE_MAX)
                     continue;
 
                 addr &= PAGE_MASK;
+
                 mmap_read_lock(worker->mm);
-                vma = find_vma(worker->mm, addr);
-                if (!vma || addr < vma->vm_start)
-                    continue;
+                ret = get_user_pages_remote(worker->mm, addr, 1, FOLL_FORCE, &page, NULL);
                 mmap_read_unlock(worker->mm);
 
-                volatile char __user *ptr = (volatile char __user *)addr;
-                volatile char dummy;
-                if (get_user(dummy, ptr))
-                    printk(KERN_WARNING "overseer_enforcer: failed to prefetch 0x%lx for pid %d\n", addr, worker->pid);
+                if (ret == 1)
+                    put_page(page);
+                else if (ret < 0)
+                    pr_warn("overseer_enforcer: failed to prefetch 0x%lx for pid %d\n",
+                            addr, worker->pid);
             }
         }
     }
 
-    kthread_unuse_mm(worker->mm);
     return 0;
 }
-
 void destroy_all_workers(void)
 {
     struct process_worker *worker;

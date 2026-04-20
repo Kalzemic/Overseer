@@ -125,7 +125,7 @@ class OverNet(nn.Module):
         if state is None:
             self.internal_state = new_state.detach()
         # residual anchor: bias toward last seen page
-        return out + pages[:, -1:, :], new_state  # (batch, seq_len, 48)
+        return out + pages[:, -1:, :], new_state.detach()  # (batch, seq_len, 48)
     
 
 
