@@ -44,6 +44,9 @@ __device__ int LookupTable::hash(unsigned long long addr)
 }
 __device__ int LookupTable::insert(unsigned long long addr)
 {
+    int existing = lookup(addr);
+    if (existing != -1)
+        return existing;
     int slot = hash(addr);
     while (map_keys[slot] != MAP_EMPTY && map_keys[slot] != MAP_DELETED)
     {
@@ -63,11 +66,12 @@ __device__ void LookupTable::remove(unsigned long long addr)
 {
     if (addr == MAP_EMPTY || addr == MAP_DELETED)
         return;
+
     int slot = hash(addr);
 
-    while (map_keys[slot] != MAP_EMPTY && map_keys[slot] != MAP_DELETED)
+    while (map_keys[slot] != MAP_EMPTY)
     {
-        if (map_keys[slot] == addr)
+        if (map_keys[slot] != MAP_DELETED && map_keys[slot] == addr)
         {
             map_keys[slot] = MAP_DELETED;
             int rank = map_values[slot];
@@ -75,6 +79,7 @@ __device__ void LookupTable::remove(unsigned long long addr)
             buffer[rank] = MAP_EMPTY;
             return;
         }
+
         slot = (slot + 1) & (MAP_SIZE - 1);
     }
 }
@@ -83,9 +88,9 @@ __device__ int LookupTable::lookup(unsigned long long addr)
 {
     int slot = hash(addr);
 
-    while (map_keys[slot] != MAP_EMPTY && map_keys[slot] != MAP_DELETED)
+    while (map_keys[slot] != MAP_EMPTY)
     {
-        if (map_keys[slot] == addr)
+        if (map_keys[slot] != MAP_DELETED && map_keys[slot] == addr)
             return map_values[slot];
 
         slot = (slot + 1) & (MAP_SIZE - 1);

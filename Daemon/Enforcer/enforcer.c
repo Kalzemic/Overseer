@@ -6,7 +6,7 @@ MODULE_AUTHOR("Kalzemic");
 MODULE_DESCRIPTION("Overseer Enforcer");
 MODULE_VERSION("0.1");
 
-static int port = 9081;
+static int port = 9091;
 
 module_param(port, int, 0444);
 

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class OverNet(nn.Module):
-    def __init__(self, vocab_size=2**14, d_model=256, n_heads=8, dropout=.1, seq_len=64, n_layers=1):
+    def __init__(self, vocab_size=2**13, d_model=256, n_heads=8, dropout=.1, seq_len=64, n_layers=1):
         super().__init__()
         self.d_model = d_model
         self.vocab_size = vocab_size
@@ -56,15 +56,12 @@ class OverNet(nn.Module):
         self._cache_0 = None
         self._cache_1 = None
 
-    def forward(self, x, state):
-        batch = x.shape[0]
+    def forward(self, ip, pages, state):
+        batch = pages.shape[0]
 
-        # x = self.lookup(x)
-        ip_ints   = x[:, :, 0]
-        page_ints = x[:, :, 1]
 
-        ip_h   = self.ip_embedding(ip_ints)
-        page_h = self.page_embedding(page_ints)
+        ip_h   = self.ip_embedding(ip)
+        page_h = self.page_embedding(pages)
 
         fused  = self.cross_attn(page_h, ip_h)
         fused  = fused + self.encoder_pe
@@ -80,7 +77,7 @@ class OverNet(nn.Module):
         out     = self.dropout(out)
         out     = self.head(out)
 
-        return out.argmax(dim=-1), new_state
+        return torch.argmax(out,dim=-1), new_state
 
     def _make_pe(self, length, d_model):
         position = torch.arange(length).unsqueeze(1).float()

@@ -3,7 +3,6 @@
 #include "encode.cuh"
 #include <iostream>
 #include <fstream>
-#include <cuda_fp16.h>
 #include <vector>
 #include "Server.hpp"
 
@@ -30,13 +29,16 @@ int main()
         return 1;
     }
     // GPU data
-    LookupTable dummy;
+    LookupTable ip_dummy;
+    LookupTable page_dummy;
     LookupTable *page_table;
     LookupTable *ip_table;
     unsigned long long *pages;
     unsigned long long *ips;
+    unsigned long long *anchor;
     half *state;
-    long long *input_tensor;
+    long long *ip_tensor;
+    long long *pages_tensor;
     long long *output_tensor;
     unsigned long long *predicted_pages;
     cudaError_t err;
@@ -59,7 +61,7 @@ int main()
         std::cerr << "failed to allocate pages table" << std::endl;
         return 1;
     }
-    err = cudaMemcpy(page_table, &dummy, sizeof(LookupTable), cudaMemcpyHostToDevice);
+    err = cudaMemcpy(page_table, &page_dummy, sizeof(LookupTable), cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
     {
         std::cerr << "failed to copy to pages table" << std::endl;
@@ -77,7 +79,7 @@ int main()
         std::cerr << "failed to allocate ips table" << std::endl;
         return 1;
     }
-    err = cudaMemcpy(ip_table, &dummy, sizeof(dummy), cudaMemcpyHostToDevice);
+    err = cudaMemcpy(ip_table, &ip_dummy, sizeof(ip_dummy), cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
     {
         std::cerr << "failed to copy to ips table" << std::endl;
@@ -87,6 +89,12 @@ int main()
     if (err != cudaSuccess)
     {
         std::cerr << "failed to allocate ip buffer" << std::endl;
+        return 1;
+    }
+    err = cudaMalloc(&anchor, sizeof(unsigned long long) * 1);
+    if (err != cudaSuccess)
+    {
+        std::cerr << "failed to allocate anchor buffer" << std::endl;
         return 1;
     }
     err = cudaMalloc(&state, 1 * D_STATE * D_MODEL * sizeof(half));
@@ -102,7 +110,13 @@ int main()
         return 1;
     }
 
-    err = cudaMalloc(&input_tensor, 2 * SEQ_LENGTH * sizeof(long long));
+    err = cudaMalloc(&ip_tensor, 1 * SEQ_LENGTH * sizeof(long long));
+    if (err != cudaSuccess)
+    {
+        std::cerr << "failed to allocate input tensor" << std::endl;
+        return 1;
+    }
+    err = cudaMalloc(&pages_tensor, 1 * SEQ_LENGTH * sizeof(long long));
     if (err != cudaSuccess)
     {
         std::cerr << "failed to allocate input tensor" << std::endl;
@@ -131,7 +145,6 @@ int main()
     }
 
     // TRT Setup
-
     engine_file.seekg(0, std::ios::end);
     size_t engine_size = engine_file.tellg();
     engine_file.seekg(0, std::ios::beg);
@@ -145,22 +158,28 @@ int main()
     inferenceEngine.engine = inferenceEngine.runtime->deserializeCudaEngine(engine_data.data(), engine_size);
     inferenceEngine.context = inferenceEngine.engine->createExecutionContext();
 
-    inferenceEngine.context->setTensorAddress("x", input_tensor);
+    inferenceEngine.context->setTensorAddress("ip", ip_tensor);
+    inferenceEngine.context->setTensorAddress("pages", pages_tensor);
     inferenceEngine.context->setTensorAddress("state", state);
-    inferenceEngine.context->setTensorAddress("y", output_tensor);
+    inferenceEngine.context->setTensorAddress("pred_pages", output_tensor);
     inferenceEngine.context->setTensorAddress("new_state", state);
 
+    // Host-side rank buffers for debug printing
+    long long h_page_ranks[SEQ_LENGTH];
+    long long h_ip_ranks[SEQ_LENGTH];
+    long long h_output_ranks[SEQ_LENGTH];
+
     std::cout << "OverNet Running" << std::endl;
+
     // Inference Loop
     while (true)
     {
         if (server.receive(static_cast<void *>(&buffer), sizeof(FaultReport)))
         {
-            // std::cout << "pid:" << buffer.pid << "input: " << std::endl;
+            // Print raw input addresses
+            // std::cout << "pid: " << std::hex << buffer.pid << " input: " << std::endl;
             // for (int i = 0; i < SEQ_LENGTH; i++)
-            // {
             //     std::cout << "0x" << std::hex << buffer.addrs[i] << "\n";
-            // }
 
             err = cudaMemcpy(ips, buffer.ips, sizeof(unsigned long long) * SEQ_LENGTH, cudaMemcpyHostToDevice);
             if (err != cudaSuccess)
@@ -174,10 +193,32 @@ int main()
                 std::cerr << "failed to copy pages to GPU" << std::endl;
                 break;
             }
+            err = cudaMemcpy(anchor, pages + SEQ_LENGTH - 1, sizeof(unsigned long long), cudaMemcpyDeviceToDevice);
+            if (err != cudaSuccess)
+            {
+                std::cerr << "failed to copy page to anchor" << std::endl;
+                break;
+            }
+            encode(page_table, ip_table, pages, ips, ip_tensor, pages_tensor, stream);
+            cudaStreamSynchronize(stream);
 
-            encode(page_table, ip_table, pages, ips, input_tensor, stream);
+            // // Print input ranks assigned by encode
+            // cudaMemcpy(h_page_ranks, pages_tensor, SEQ_LENGTH * sizeof(long long), cudaMemcpyDeviceToHost);
+            // cudaMemcpy(h_ip_ranks, ip_tensor, SEQ_LENGTH * sizeof(long long), cudaMemcpyDeviceToHost);
+            // std::cout << "pid: " << std::hex << buffer.pid << " input ranks (page_rank | ip_rank):" << std::endl;
+            // for (int i = 0; i < SEQ_LENGTH; i++)
+            //     std::cout << std::dec << h_page_ranks[i] << " | " << h_ip_ranks[i] << "\n";
+
             inferenceEngine.context->enqueueV3(stream);
-            decode(page_table, output_tensor, predicted_pages, stream);
+            cudaStreamSynchronize(stream);
+
+            // // Print raw output ranks from NN before decode
+            // cudaMemcpy(h_output_ranks, output_tensor, SEQ_LENGTH * sizeof(long long), cudaMemcpyDeviceToHost);
+            // std::cout << "pid: " << std::hex << buffer.pid << " output ranks:" << std::endl;
+            // for (int i = 0; i < SEQ_LENGTH; i++)
+            //     std::cout << std::dec << h_output_ranks[i] << "\n";
+
+            decode(page_table, output_tensor, predicted_pages, stream, anchor);
             cudaStreamSynchronize(stream);
 
             err = cudaMemcpy(report.addrs, predicted_pages, sizeof(unsigned long long) * SEQ_LENGTH, cudaMemcpyDeviceToHost);
@@ -188,12 +229,12 @@ int main()
             }
             report.pid = buffer.pid;
 
-            server.send(static_cast<void *>(&report), sizeof(unsigned long long) * SEQ_LENGTH, ENFORCER_PORT);
-            // std::cout << "pid:" << buffer.pid << "output: " << std::endl;
+            server.send(&report, sizeof(EnforcerReport), ENFORCER_PORT);
+
+            // Print decoded output addresses
+            // std::cout << "pid: " << std::hex << buffer.pid << " output: " << std::endl;
             // for (int i = 0; i < SEQ_LENGTH; i++)
-            // {
             //     std::cout << "0x" << std::hex << report.addrs[i] << "\n";
-            // }
             // std::cout << std::endl;
         }
     }
@@ -206,78 +247,79 @@ int main()
     cudaFree(ip_table);
     cudaFree(pages);
     cudaFree(ips);
+    cudaFree(anchor);
     cudaFree(state);
-    cudaFree(input_tensor);
+    cudaFree(ip_tensor);
+    cudaFree(pages_tensor);
     cudaFree(output_tensor);
     cudaStreamDestroy(stream);
 }
+// void benchmark_inference(
+//     LookupTable *page_table, LookupTable *ip_table,
+//     unsigned long long *pages, unsigned long long *ips,
+//     long long *input_tensor, long long *output_tensor,
+//     unsigned long long *predicted_pages,
+//     nvinfer1::IExecutionContext *context,
+//     cudaStream_t stream)
+// {
+//     unsigned long long h_pages[SEQ_LENGTH];
+//     unsigned long long h_ips[SEQ_LENGTH];
 
-void benchmark_inference(
-    LookupTable *page_table, LookupTable *ip_table,
-    unsigned long long *pages, unsigned long long *ips,
-    long long *input_tensor, long long *output_tensor,
-    unsigned long long *predicted_pages,
-    nvinfer1::IExecutionContext *context,
-    cudaStream_t stream)
-{
-    unsigned long long h_pages[SEQ_LENGTH];
-    unsigned long long h_ips[SEQ_LENGTH];
+//     // warmup with hit data
+//     for (int i = 0; i < SEQ_LENGTH; i++)
+//     {
+//         h_pages[i] = i * 4096;
+//         h_ips[i] = i * 1234;
+//     }
+//     cudaMemcpy(pages, h_pages, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
+//     cudaMemcpy(ips, h_ips, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
 
-    // warmup with hit data
-    for (int i = 0; i < SEQ_LENGTH; i++)
-    {
-        h_pages[i] = i * 4096;
-        h_ips[i] = i * 1234;
-    }
-    cudaMemcpy(pages, h_pages, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
-    cudaMemcpy(ips, h_ips, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
+//     for (int i = 0; i < 10; i++)
+//     {
+//         encode(page_table, ip_table, pages, ips, input_tensor, stream);
+//         context->enqueueV3(stream);
+//         decode(page_table, output_tensor, predicted_pages, stream);
+//     }
+//     cudaStreamSynchronize(stream);
 
-    for (int i = 0; i < 10; i++)
-    {
-        encode(page_table, ip_table, pages, ips, input_tensor, stream);
-        context->enqueueV3(stream);
-        decode(page_table, output_tensor, predicted_pages, stream);
-    }
-    cudaStreamSynchronize(stream);
+//     cudaEvent_t start, stop;
+//     cudaEventCreate(&start);
+//     cudaEventCreate(&stop);
 
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
+//     // hit benchmark
+//     cudaEventRecord(start, stream);
+//     for (int i = 0; i < 10; i++)
+//     {
+//         encode(page_table, ip_table, pages, ips, input_tensor, stream);
+//         context->enqueueV3(stream);
+//         decode(page_table, output_tensor, predicted_pages, stream);
+//     }
+//     cudaEventRecord(stop, stream);
+//     cudaStreamSynchronize(stream);
 
-    // hit benchmark
-    cudaEventRecord(start, stream);
-    for (int i = 0; i < 10; i++)
-    {
-        encode(page_table, ip_table, pages, ips, input_tensor, stream);
-        context->enqueueV3(stream);
-        decode(page_table, output_tensor, predicted_pages, stream);
-    }
-    cudaEventRecord(stop, stream);
-    cudaStreamSynchronize(stream);
+//     float ms;
+//     cudaEventElapsedTime(&ms, start, stop);
+//     std::cout << "hit avg latency: " << ms / 10.0f << " ms" << std::endl;
 
-    float ms;
-    cudaEventElapsedTime(&ms, start, stop);
-    std::cout << "hit avg latency: " << ms / 10.0f << " ms" << std::endl;
+//     // miss benchmark
+//     for (int i = 0; i < SEQ_LENGTH; i++)
+//     {
+//         h_pages[i] = (unsigned long long)9999999 + i;
+//         h_ips[i] = (unsigned long long)8888888 + i;
+//     }
+//     cudaMemcpy(pages, h_pages, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
+//     cudaMemcpy(ips, h_ips, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
 
-    // miss benchmark
-    for (int i = 0; i < SEQ_LENGTH; i++)
-    {
-        h_pages[i] = (unsigned long long)9999999 + i;
-        h_ips[i] = (unsigned long long)8888888 + i;
-    }
-    cudaMemcpy(pages, h_pages, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
-    cudaMemcpy(ips, h_ips, SEQ_LENGTH * sizeof(unsigned long long), cudaMemcpyHostToDevice);
+//     cudaEventRecord(start, stream);
+//     encode(page_table, ip_table, pages, ips, input_tensor, stream);
+//     context->enqueueV3(stream);
+//     decode(page_table, output_tensor, predicted_pages, stream);
+//     cudaEventRecord(stop, stream);
+//     cudaStreamSynchronize(stream);
 
-    cudaEventRecord(start, stream);
-    encode(page_table, ip_table, pages, ips, input_tensor, stream);
-    context->enqueueV3(stream);
-    decode(page_table, output_tensor, predicted_pages, stream);
-    cudaEventRecord(stop, stream);
-    cudaStreamSynchronize(stream);
+//     cudaEventElapsedTime(&ms, start, stop);
+//     std::cout << "miss latency: " << ms << " ms" << std::endl;
 
-    cudaEventElapsedTime(&ms, start, stop);
-    std::cout << "miss latency: " << ms << " ms" << std::endl;
-
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
-}
+//     cudaEventDestroy(start);
+//     cudaEventDestroy(stop);
+// }

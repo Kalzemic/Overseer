@@ -5,6 +5,7 @@ OverNet: \
   CMakeFiles/OverNet.dir/main.cpp.o \
   CMakeFiles/OverNet.dir/Lookup.cu.o \
   CMakeFiles/OverNet.dir/encode.cu.o \
+  CMakeFiles/OverNet.dir/Server.cpp.o \
   CMakeFiles/OverNet.dir/cmake_device_link.o \
   /home/kalzemic/TensorRT/TensorRT-10.13.3.9/lib/libnvinfer.so \
   /opt/cuda/targets/x86_64-linux/lib/libcudart.so \
@@ -60,6 +61,8 @@ CMakeFiles/OverNet.dir/main.cpp.o:
 CMakeFiles/OverNet.dir/Lookup.cu.o:
 
 CMakeFiles/OverNet.dir/encode.cu.o:
+
+CMakeFiles/OverNet.dir/Server.cpp.o:
 
 CMakeFiles/OverNet.dir/cmake_device_link.o:
 

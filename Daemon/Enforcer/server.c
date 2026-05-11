@@ -2,7 +2,7 @@
 #include <linux/in.h>
 #include <net/sock.h>
 #include "enforcer.h"
-
+#include <linux/version.h>
 static struct socket *sock = NULL;
 
 int server_run(void *data)
@@ -55,7 +55,11 @@ int server_start(int port)
         printk(KERN_ERR "overseer_enforcer: failed to create socker\n");
         return ret;
     }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+    ret = kernel_bind(sock, (struct sockaddr_unsized *)&addr, sizeof(addr));
+#else
     ret = kernel_bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+#endif
     if (ret < 0)
     {
         printk(KERN_ERR "overseer_enforcer: failed to bind socket\n");

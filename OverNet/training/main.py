@@ -4,48 +4,70 @@ import numpy as np
 from Data import MemDataset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from OverNet_State import OverNet
+from OverNet_Ordinal import OverNet
 from torch.optim.lr_scheduler import OneCycleLR
+from LookupTable import LookupTable
+
 
 lr = 1e-4
-layers = 2
+layers = 1
 epochs = 50
 heads = 8
 max_grad_norm = 5
 l2lambda = 1e-2
-d_model = 256
-seq_length = 32
+d_model = 128
+seq_length = 64
 dropout = .3
-d_state= 256
-RESNET_TRAIN = [f'./data/resnet{j}/resnet{j}_train_0{i}.bin' for i in range(1,10) for j in ['',2,3]]
-RESNET_VAL   = [f'./data/resnet{j}/resnet{j}_val.bin' for j in ['',2,3]]
-STEPS_PER_EPOCH = 150000
+d_state = 128
+vocab_size=2 ** 9
+batch_size = 64
+
+
+# RESNET_TRAIN = [f'./data/resnet{j}/resnet{j}_train_0{i}.bin' for i in range(1, 9) for j in ['', 2]] + \
+#                [f'./data/resnet{j}/resnet{j}_val.bin' for j in ['', 2]]
+# RESNET_VAL   = [f'./data/resnet3/resnet3_train_0{i}.bin' for i in range(1, 9)]  + \
+#                [f'./data/resnet3/resnet3_val.bin']
+RESNET_TRAIN = [f'./data/resnet_{i}.bin' for i in range(1,10)]
+RESNET_VAL = ['./data/resnet_10.bin']
+BERT_TRAIN = [f'./data/bert_{i}.bin' for i in range(1,10)]
+BERT_VAL = ['./data/bert_10.bin']
+HPL_TRAIN = [f'./data/hpl_{i}.bin' for i in range(1,10)]
+HPL_VAL = ['./data/hpl_10.bin']
+MLPERF_TRAIN = []
+MLPERF_VAL = []
+STEPS_PER_EPOCH = 12465
 
 total_steps = epochs * STEPS_PER_EPOCH
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
+def compute_deltas(x, anchor):
+    x = x.long()
+    anchor = anchor.long()
+    deltas = torch.empty_like(x)
+    deltas[:, 0, :] = x[:, 0, :] - anchor
+    deltas[:, 1:, :] = x[:, 1:, :] - x[:, :-1, :]
+    return deltas
 
-def compute_coverage(pred_page_ints, true_page_ints):
-    match = (pred_page_ints.unsqueeze(2) == true_page_ints.unsqueeze(1)).any(dim=2)
+def compute_coverage(pred_page_ranks, true_page_ranks):
+    match = (pred_page_ranks.unsqueeze(2) == true_page_ranks.unsqueeze(1)).any(dim=2)
     return match.float().mean(dim=1).mean().item()
 
 
 def main():
-    train_data = MemDataset(RESNET_TRAIN, seq_len=seq_length)
-    val_data   = MemDataset(RESNET_VAL,   seq_len=seq_length)
+    train_data = MemDataset([*RESNET_TRAIN, *BERT_TRAIN, *HPL_TRAIN], seq_len=seq_length, batch_size=batch_size)
+    val_data   = MemDataset([*RESNET_VAL, *BERT_VAL, *HPL_VAL],   seq_len=seq_length, batch_size=batch_size)
 
     overnet = OverNet(
         n_layers=layers, seq_len=seq_length, n_heads=heads,
-        d_model=d_model, dropout=dropout
+        d_model=d_model, dropout=dropout,vocab_size=vocab_size
     ).to(device)
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss()
 
-    # single optimizer — no VQ parameters to separate out
     optimizer = torch.optim.AdamW(overnet.parameters(), lr=lr, weight_decay=l2lambda)
     scheduler = OneCycleLR(
         optimizer,
-        max_lr=1e-4,
+        max_lr=lr,
         total_steps=total_steps,
         pct_start=0.05,
         anneal_strategy='cos',
@@ -59,25 +81,13 @@ def main():
     plot_history(history)
 
 
-def make_delta_bits(x, y, net):
-    true_page_ints = y[:, :, 1].long()
-    last_x_page    = x[:, -1, 1].long()
-
-    first_delta = true_page_ints[:, :1] - last_x_page.unsqueeze(1)
-    rest_deltas = true_page_ints[:, 1:] - true_page_ints[:, :-1]
-    true_deltas = torch.cat([first_delta, rest_deltas], dim=1)
-
-    true_delta_bits = net.to_bits(true_deltas)
-    return true_delta_bits, true_page_ints
-
-
-def train(net, criterion, optimizer, scheduler, train_data, val_data, scaler):
+def train(net: OverNet, criterion, optimizer, scheduler, train_data, val_data, scaler):
 
     history = dict(train_loss=[], train_acc=[], train_coverage=[],
                    val_loss=[], val_acc=[], val_coverage=[])
     best_val_acc = 0.0
     state = None
-
+    lut =LookupTable(vocab_size=vocab_size)
     for epoch in range(epochs):
         print(f'\nEpoch {epoch + 1}/{epochs}')
         net.train()
@@ -85,19 +95,28 @@ def train(net, criterion, optimizer, scheduler, train_data, val_data, scaler):
         batch_losses   = []
         batch_acc      = []
         batch_coverage = []
+        lut.reset_vocab()
 
         for index, x, y in tqdm(train_data, desc="train"):
             x = x.to(device)
             y = y.to(device)
 
+            y = compute_deltas(y,x[:,-1,:])
+            x = compute_deltas(x,torch.zeros_like(x[:,0,:],device=device))
+            
             if index == 0 or state is None or x.shape[0] != state.shape[0]:
-               state = torch.zeros(x.shape[0],d_state, d_model).to(device)
+                state = torch.zeros(x.shape[0], d_state, d_model).to(device)
+                
 
-            true_delta_bits, true_page_ints = make_delta_bits(x, y, net)
+            # convert y pages to ordinal ranks — (batch, seq)
+            x = lut.lookup(x).to(device)
+            true_page_ranks = lut.lookup(y)[:, :, 1].to(device)
 
             with torch.autocast(device_type='cuda', dtype=torch.float16):
-                delta_logits, pred_page_ints, new_state = net(x, state)
-                loss = criterion(delta_logits, true_delta_bits)
+                out, new_state = net(x, state)
+                # if index == 0: 
+                #     print(out.permute(0, 2, 1))
+                loss = criterion(out.permute(0, 2, 1), true_page_ranks)
 
             optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
@@ -109,10 +128,12 @@ def train(net, criterion, optimizer, scheduler, train_data, val_data, scaler):
 
             state = new_state.detach()
 
+            pred_page_ranks = out.argmax(dim=-1)  # (batch, seq)
+
             batch_losses.append(loss.item())
             with torch.no_grad():
-                acc      = ((delta_logits > 0) == true_delta_bits.bool()).float().mean().item()
-                coverage = compute_coverage(pred_page_ints, true_page_ints)
+                acc      = (pred_page_ranks == true_page_ranks).float().mean().item()
+                coverage = compute_coverage(pred_page_ranks, true_page_ranks)
             batch_acc.append(acc)
             batch_coverage.append(coverage)
 
@@ -129,32 +150,40 @@ def train(net, criterion, optimizer, scheduler, train_data, val_data, scaler):
         batch_losses   = []
         batch_acc      = []
         batch_coverage = []
+        lut.reset_vocab()
+
 
         with torch.no_grad():
             for index, x, y in tqdm(val_data, desc="val"):
                 x = x.to(device)
                 y = y.to(device)
 
+                y = compute_deltas(y,x[:,-1,:])
+                x = compute_deltas(x,torch.zeros_like(x[:,0,:],device=device))
+
                 if index == 0 or state is None or x.shape[0] != state.shape[0]:
                     state = torch.zeros(x.shape[0], d_state, d_model).to(device)
 
                 if not torch.isfinite(x.float()).all():
                     continue
-
-                true_delta_bits, true_page_ints = make_delta_bits(x, y, net)
+                
+                x = lut.lookup(x).to(device)
+                true_page_ranks = lut.lookup(y)[:, :, 1].to(device)
 
                 with torch.autocast(device_type='cuda', dtype=torch.float16):
-                    delta_logits, pred_page_ints, new_state = net(x, state)
+                    out, new_state = net(x, state)
 
-                    if not torch.isfinite(delta_logits).all():
+                    if not torch.isfinite(out).all():
                         continue
 
-                    loss = criterion(delta_logits, true_delta_bits)
+                    loss = criterion(out.permute(0, 2, 1), true_page_ranks)
 
                 state = new_state
+                pred_page_ranks = out.argmax(dim=-1)
+
                 batch_losses.append(loss.item())
-                acc      = ((delta_logits > 0) == true_delta_bits.bool()).float().mean().item()
-                coverage = compute_coverage(pred_page_ints, true_page_ints)
+                acc      = (pred_page_ranks == true_page_ranks).float().mean().item()
+                coverage = compute_coverage(pred_page_ranks, true_page_ranks)
                 batch_acc.append(acc)
                 batch_coverage.append(coverage)
 
@@ -168,7 +197,7 @@ def train(net, criterion, optimizer, scheduler, train_data, val_data, scaler):
 
         if epoch_acc > best_val_acc:
             best_val_acc = epoch_acc
-            torch.save(net.state_dict(), f'OverNet_Bitwise_{layers}L.pt')
+            torch.save(net.state_dict(), f'OverNet_Ordinal_{layers}L.pt')
             print(f"  → saved checkpoint")
 
         torch.cuda.empty_cache()
@@ -184,14 +213,14 @@ def plot_history(history):
     axes[0].legend()
     axes[1].plot(history['train_acc'], label='train')
     axes[1].plot(history['val_acc'],   label='val')
-    axes[1].set_title('Bit Accuracy')
+    axes[1].set_title('Accuracy')
     axes[1].legend()
     axes[2].plot(history['train_coverage'], label='train')
     axes[2].plot(history['val_coverage'],   label='val')
     axes[2].set_title('Coverage')
     axes[2].legend()
     plt.tight_layout()
-    plt.savefig('training_history_bitwise.png')
+    plt.savefig('training_history_ordinal.png')
     plt.show()
 
 

@@ -24,21 +24,10 @@ class OverState(nn.Module):
         return self.norm(state + attended)
 
 
-class GRUHead(nn.Module):
-
-    def __init__(self, d_model, input_size):
-        super().__init__()
-        self.gru = nn.GRU(d_model, d_model, batch_first=True)
-        self.act = nn.GELU()
-        self.fc  = nn.Linear(d_model, input_size)
-
-    def forward(self, x):
-        out, _ = self.gru(x)
-        return self.fc(self.act(out))
 
 
 class OverNet(nn.Module):
-    def __init__(self, input_size=48, seq_len=64, d_model=256, n_heads=8, n_layers=4,
+    def __init__(self, input_size=52, seq_len=64, d_model=256, n_heads=8, n_layers=4,
                  dropout=0.1, d_state=128):
         super().__init__()
 
@@ -83,16 +72,15 @@ class OverNet(nn.Module):
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=n_layers)
         self.dropout = nn.Dropout(dropout)
 
-        self.head = GRUHead(d_model, input_size)
+        self.head = nn.Linear(d_model,input_size)
 
     def to_bits(self, integers):
-        mask = (1 << self.input_size) - 1
-        integers = integers & mask
+        integers = integers >> 12  # shift right to discard lower 12 bits, keep upper 52
         return ((integers.unsqueeze(-1) >> self.bit_shifts) & 1).float()
 
     def to_integers(self, bits):
         binary = (bits > 0).long()
-        return (binary * self.powers).sum(dim=-1)
+        return (binary * self.powers).sum(dim=-1) << 12  # shift back to byte address space
 
     def _make_pe(self, length, d_model):
         position = torch.arange(length).unsqueeze(1).float()

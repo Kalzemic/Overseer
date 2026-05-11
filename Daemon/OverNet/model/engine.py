@@ -17,7 +17,7 @@ with open('OverNet.onnx','rb') as f:
 
 config = builder.create_builder_config()
 config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
-config.set_flag(trt.BuilderFlag.FP16)
+#config.set_flag(trt.BuilderFlag.FP16)
 
 
 

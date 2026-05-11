@@ -12,7 +12,7 @@ include_directories(
 
 link_directories(${TENSORRT_DIR}/lib)
 
-add_executable(OverNet main.cpp Lookup.cu encode.cu)
+add_executable(OverNet main.cpp Lookup.cu encode.cu Server.cpp)
 
 set_target_properties(OverNet PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON

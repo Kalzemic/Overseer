@@ -153,6 +153,30 @@ Lookup.cu.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/OverNet.dir/build.make CMakeFiles/OverNet.dir/Lookup.cu.s
 .PHONY : Lookup.cu.s
 
+Server.o: Server.cpp.o
+.PHONY : Server.o
+
+# target to build an object file
+Server.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OverNet.dir/build.make CMakeFiles/OverNet.dir/Server.cpp.o
+.PHONY : Server.cpp.o
+
+Server.i: Server.cpp.i
+.PHONY : Server.i
+
+# target to preprocess a source file
+Server.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OverNet.dir/build.make CMakeFiles/OverNet.dir/Server.cpp.i
+.PHONY : Server.cpp.i
+
+Server.s: Server.cpp.s
+.PHONY : Server.s
+
+# target to generate assembly for a file
+Server.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/OverNet.dir/build.make CMakeFiles/OverNet.dir/Server.cpp.s
+.PHONY : Server.cpp.s
+
 encode.o: encode.cu.o
 .PHONY : encode.o
 
@@ -213,6 +237,9 @@ help:
 	@echo "... Lookup.o"
 	@echo "... Lookup.i"
 	@echo "... Lookup.s"
+	@echo "... Server.o"
+	@echo "... Server.i"
+	@echo "... Server.s"
 	@echo "... encode.o"
 	@echo "... encode.i"
 	@echo "... encode.s"
