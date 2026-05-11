@@ -165,9 +165,9 @@ int main()
     inferenceEngine.context->setTensorAddress("new_state", state);
 
     // Host-side rank buffers for debug printing
-    long long h_page_ranks[SEQ_LENGTH];
-    long long h_ip_ranks[SEQ_LENGTH];
-    long long h_output_ranks[SEQ_LENGTH];
+    // long long h_page_ranks[SEQ_LENGTH];
+    // long long h_ip_ranks[SEQ_LENGTH];
+    // long long h_output_ranks[SEQ_LENGTH];
 
     std::cout << "OverNet Running" << std::endl;
 
