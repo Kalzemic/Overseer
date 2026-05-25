@@ -58,8 +58,7 @@ net = BertForMaskedLM(config)
 params = sum(p.numel() for p in net.parameters())
 print(f"Parameters: {params:,} ({params * 4 / 1024 / 1024:.1f} MB)")
 
-# Reapply MADV_RANDOM after PyTorch/model initialization
-# since importing torch and building the model creates many new mappings
+
 with open('/proc/self/maps') as f:
     for line in f:
         parts = line.split()
@@ -79,7 +78,7 @@ with open('/proc/self/maps') as f:
 
 batch_size = 8
 seq_len = 64
-num_steps = 100
+num_steps = 200
 
 input_ids = torch.randint(0, VOCAB_SIZE, (batch_size, seq_len))
 labels = input_ids.clone()
@@ -98,8 +97,6 @@ for i in range(num_steps):
     loss = output.loss
     loss.backward()
     optimizer.step()
-    # set_to_none=False keeps gradient tensors alive, just zeroes them
-    # prevents PyTorch from dropping and re-allocating grad buffers each step
     optimizer.zero_grad(set_to_none=False)
 
 elapsed = time.perf_counter() - start

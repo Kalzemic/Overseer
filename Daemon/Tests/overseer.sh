@@ -47,3 +47,6 @@ sudo ../Collector/overseer_collector $CGROUP_ID $OVERNET_IP $OVERNET_PORT &
 
 
 docker logs -f $CONTAINER_NAME
+
+echo "=== OVERSEER major faults ==="
+cat /proc/$PID/stat 2>/dev/null | awk '{print "majflt: " $12}' || echo "pid already gone"

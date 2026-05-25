@@ -15,8 +15,8 @@ epochs = 50
 heads = 8
 max_grad_norm = 5
 l2lambda = 1e-2
-d_model = 128
-seq_length = 64
+d_model = 256
+seq_length = 256
 dropout = .3
 d_state = 128
 vocab_size=2 ** 9
@@ -35,7 +35,7 @@ HPL_TRAIN = [f'./data/hpl_{i}.bin' for i in range(1,10)]
 HPL_VAL = ['./data/hpl_10.bin']
 MLPERF_TRAIN = []
 MLPERF_VAL = []
-STEPS_PER_EPOCH = 12465
+STEPS_PER_EPOCH = 12465 // 4
 
 total_steps = epochs * STEPS_PER_EPOCH
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -145,7 +145,7 @@ def train(net: OverNet, criterion, optimizer, scheduler, train_data, val_data, s
         history['train_coverage'].append(epoch_coverage)
         print(f"Train | loss: {epoch_loss:.4f}  acc: {epoch_acc*100:.2f}%  coverage: {epoch_coverage*100:.2f}%")
 
-        # ── Validation ──────────────────────────────────────────────────
+    
         net.eval()
         batch_losses   = []
         batch_acc      = []

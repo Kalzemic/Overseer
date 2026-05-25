@@ -7,7 +7,7 @@
 
 // neural network parameters
 #define INPUT_SIZE 1
-#define SEQ_LENGTH 64
+#define SEQ_LENGTH 256
 #define D_MODEL 256
 #define D_STATE 256
 #define RESET_MAX 32768

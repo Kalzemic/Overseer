@@ -2,8 +2,8 @@ import torch
 from OverNet import OverNet
 
 #INPUT_SIZE = 2
-SEQ_LEN = 64
-D_MODEL = 128   
+SEQ_LEN = 256
+D_MODEL = 256   
 D_STATE = 128
 VOCAB_SIZE=2**9
 net = OverNet(n_layers=1, d_model=D_MODEL, seq_len=SEQ_LEN, vocab_size=VOCAB_SIZE)

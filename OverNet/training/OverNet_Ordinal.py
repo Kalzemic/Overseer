@@ -71,9 +71,9 @@ class OverNet(nn.Module):
         fused  = self.dropout(fused)
 
         memory    = self.encoder(fused)
-        new_state = self.overstate(memory, state)
-
-        memory = torch.cat([memory, new_state], dim=1)
+        #new_state = self.overstate(memory, state)
+        new_state = state
+        #memory = torch.cat([memory, new_state], dim=1)
 
         queries = self.output_queries.expand(batch, -1, -1) + self.decoder_pe
         out     = self.decoder(queries, memory)

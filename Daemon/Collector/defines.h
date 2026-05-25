@@ -1,3 +1,3 @@
 #pragma once
 
-#define BATCH_SIZE 128
+#define BATCH_SIZE 256
