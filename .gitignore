@@ -19,8 +19,10 @@ test.*
 skel.bpf.h
 vmlinux.h
 *.cmake
+
 CMakeCache.txt
 go.mod
 __pycache__
 *.png
 *.onnx
+CMakeFiles/

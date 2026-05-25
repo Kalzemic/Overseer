@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/kalzemic/Projects/Overseer/Daemon/OverNet/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

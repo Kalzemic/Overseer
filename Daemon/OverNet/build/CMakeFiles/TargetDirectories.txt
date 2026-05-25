@@ -1,3 +1,0 @@
-/home/kalzemic/Projects/Overseer/Daemon/OverNet/build/CMakeFiles/OverNet.dir
-/home/kalzemic/Projects/Overseer/Daemon/OverNet/build/CMakeFiles/edit_cache.dir
-/home/kalzemic/Projects/Overseer/Daemon/OverNet/build/CMakeFiles/rebuild_cache.dir
