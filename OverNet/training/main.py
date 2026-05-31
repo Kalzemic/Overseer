@@ -33,6 +33,8 @@ BERT_TRAIN = [f'./data/bert_{i}.bin' for i in range(1,10)]
 BERT_VAL = ['./data/bert_10.bin']
 HPL_TRAIN = [f'./data/hpl_{i}.bin' for i in range(1,10)]
 HPL_VAL = ['./data/hpl_10.bin']
+BFS_TRAIN = [f'./data/bfs_{i}.bin' for i in range(1,10)]
+BFS_VAL = ['./data/bfs_10.bin']
 MLPERF_TRAIN = []
 MLPERF_VAL = []
 STEPS_PER_EPOCH = 12465 // 4
@@ -54,8 +56,8 @@ def compute_coverage(pred_page_ranks, true_page_ranks):
 
 
 def main():
-    train_data = MemDataset([*RESNET_TRAIN, *BERT_TRAIN, *HPL_TRAIN], seq_len=seq_length, batch_size=batch_size)
-    val_data   = MemDataset([*RESNET_VAL, *BERT_VAL, *HPL_VAL],   seq_len=seq_length, batch_size=batch_size)
+    train_data = MemDataset([*BFS_TRAIN], seq_len=seq_length, batch_size=batch_size)
+    val_data   = MemDataset([*BFS_VAL],   seq_len=seq_length, batch_size=batch_size)
 
     overnet = OverNet(
         n_layers=layers, seq_len=seq_length, n_heads=heads,

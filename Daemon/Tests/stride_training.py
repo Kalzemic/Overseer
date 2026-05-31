@@ -78,7 +78,7 @@ with open('/proc/self/maps') as f:
 
 batch_size = 8
 seq_len = 64
-num_steps = 200
+num_steps = 10
 
 input_ids = torch.randint(0, VOCAB_SIZE, (batch_size, seq_len))
 labels = input_ids.clone()

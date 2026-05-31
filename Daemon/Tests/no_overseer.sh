@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 docker rm -f no_overseer 2>/dev/null
-docker run -d --name no_overseer stride-trainer
+docker run -d --name no_overseer bert-trainer
 
 PID=$(docker inspect no_overseer --format '{{.State.Pid}}')
 

@@ -2,7 +2,7 @@
 
 set -e
 
-for i in {1..2}; do 
+for i in {1..10}; do 
 	./overseer.sh 
 	./no_overseer.sh
 done

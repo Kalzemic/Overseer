@@ -33,7 +33,7 @@ sleep 1
 docker rm -f $CONTAINER_NAME 2>/dev/null
 
 #docker run -d --name $CONTAINER_NAME ubuntu bash -c "while true; do dd if=/dev/urandom of=/dev/null bs=1M count=100; sleep 0.1; done"
-docker run -d --name $CONTAINER_NAME stride-trainer
+docker run -d --name $CONTAINER_NAME bert-trainer
 
 PID=$(docker inspect $CONTAINER_NAME --format '{{.State.Pid}}')
 

@@ -10,6 +10,9 @@ OverNet/training/data/
 drivers/
 *.o
 *.ko
+*.mod
+*.order
+*.symvers
 */overseer_collector
 *.vscode
 *.trt
@@ -26,3 +29,9 @@ __pycache__
 *.png
 *.onnx
 CMakeFiles/
+overnet_logs.txt
+
+
+#exe files: 
+overseer_collector
+OverNet
