@@ -4,7 +4,6 @@ import time
 import os
 
 # Disable PyTorch's caching allocator entirely — forces malloc/free directly
-# This prevents MADV_FREE on tensor memory
 os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
 
 # Force glibc to not use MADV_FREE/MADV_DONTNEED on free()
@@ -78,7 +77,7 @@ with open('/proc/self/maps') as f:
 
 batch_size = 8
 seq_len = 64
-num_steps = 10
+num_steps = 5
 
 input_ids = torch.randint(0, VOCAB_SIZE, (batch_size, seq_len))
 labels = input_ids.clone()

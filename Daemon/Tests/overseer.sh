@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
-
 CONTAINER_NAME=overseer_test
-
 OVERNET_IP=127.0.0.1
-
-#OVERNET_IP=192.168.55.1
-
 OVERNET_PORT=9090
 
-
+# Path to the existing Hilbert backing file on real disk (bind-mounted into
+# the container -- see docker run below). Adjust if yours lives elsewhere.
+HILBERT_DAT="$HOME/hilbert_bench.dat"
+LOG_N=11
 
 cleanup() {
     echo "cleaning up..."
@@ -18,6 +16,15 @@ cleanup() {
 }
 
 trap cleanup EXIT INT TERM
+
+# ── System prep ────────────────────────────────────────────────────────────────
+#
+
+sync
+echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
+echo "page cache dropped"
+
+# ── Overseer setup ─────────────────────────────────────────────────────────────
 
 sudo insmod ../Enforcer/overseer_enforcer.ko 2>/dev/null || \
     lsmod | grep -q overseer_enforcer || \
@@ -29,24 +36,24 @@ cd ../Tests
 
 sleep 1
 
+# ── Container launch ───────────────────────────────────────────────────────────
 
-docker rm -f $CONTAINER_NAME 2>/dev/null
+docker rm -f "$CONTAINER_NAME" 2>/dev/null
 
-#docker run -d --name $CONTAINER_NAME ubuntu bash -c "while true; do dd if=/dev/urandom of=/dev/null bs=1M count=100; sleep 0.1; done"
-docker run -d --name $CONTAINER_NAME bert-trainer
+docker run -d \
+    --name "$CONTAINER_NAME" \
+    -v "$HILBERT_DAT:/data/hilbert_bench.dat" \
+    hilbert_bench -n "$LOG_N" /data/hilbert_bench.dat
 
-PID=$(docker inspect $CONTAINER_NAME --format '{{.State.Pid}}')
-
+PID=$(docker inspect "$CONTAINER_NAME" --format '{{.State.Pid}}')
 CGROUP_PATH=$(cat /proc/$PID/cgroup | sed 's/0::\///')
-
 CGROUP_ID=$(sudo stat -c '%i' /sys/fs/cgroup/$CGROUP_PATH)
 
 echo "PID: $PID, Cgroup: $CGROUP_PATH, ID: $CGROUP_ID"
 
-sudo ../Collector/overseer_collector $CGROUP_ID $OVERNET_IP $OVERNET_PORT &
+sudo ../Collector/overseer_collector "$CGROUP_ID" "$OVERNET_IP" "$OVERNET_PORT" &
 
-
-docker logs -f $CONTAINER_NAME
+docker logs -f "$CONTAINER_NAME"
 
 echo "=== OVERSEER major faults ==="
 cat /proc/$PID/stat 2>/dev/null | awk '{print "majflt: " $12}' || echo "pid already gone"

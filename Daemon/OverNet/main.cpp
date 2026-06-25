@@ -36,7 +36,7 @@ int main()
     unsigned long long *pages;
     unsigned long long *ips;
     unsigned long long *anchor;
-    half *state;
+    // half *state;
     long long *ip_tensor;
     long long *pages_tensor;
     long long *output_tensor;
@@ -97,18 +97,18 @@ int main()
         std::cerr << "failed to allocate anchor buffer" << std::endl;
         return 1;
     }
-    err = cudaMalloc(&state, 1 * D_STATE * D_MODEL * sizeof(half));
-    if (err != cudaSuccess)
-    {
-        std::cerr << "failed to allocate state" << std::endl;
-        return 1;
-    }
-    err = cudaMemset(state, 0, 1 * D_STATE * D_MODEL * sizeof(half));
-    if (err != cudaSuccess)
-    {
-        std::cerr << "failed to set state" << std::endl;
-        return 1;
-    }
+    // err = cudaMalloc(&state, 1 * D_STATE * D_MODEL * sizeof(half));
+    // if (err != cudaSuccess)
+    // {
+    //     std::cerr << "failed to allocate state" << std::endl;
+    //     return 1;
+    // }
+    // err = cudaMemset(state, 0, 1 * D_STATE * D_MODEL * sizeof(half));
+    // if (err != cudaSuccess)
+    // {
+    //     std::cerr << "failed to set state" << std::endl;
+    //     return 1;
+    // }
 
     err = cudaMalloc(&ip_tensor, 1 * SEQ_LENGTH * sizeof(long long));
     if (err != cudaSuccess)
@@ -156,13 +156,23 @@ int main()
     Logger logger;
     inferenceEngine.runtime = nvinfer1::createInferRuntime(logger);
     inferenceEngine.engine = inferenceEngine.runtime->deserializeCudaEngine(engine_data.data(), engine_size);
+    if (!inferenceEngine.engine)
+    {
+        std::cerr << "engine deserialize failed\n";
+        return 1;
+    }
     inferenceEngine.context = inferenceEngine.engine->createExecutionContext();
+    if (!inferenceEngine.context)
+    {
+        std::cerr << "context create failed\n";
+        return 1;
+    }
 
     inferenceEngine.context->setTensorAddress("ip", ip_tensor);
     inferenceEngine.context->setTensorAddress("pages", pages_tensor);
-    inferenceEngine.context->setTensorAddress("state", state);
+    // inferenceEngine.context->setTensorAddress("state", state);
     inferenceEngine.context->setTensorAddress("pred_pages", output_tensor);
-    inferenceEngine.context->setTensorAddress("new_state", state);
+    // inferenceEngine.context->setTensorAddress("new_state", state);
 
     // Host-side rank buffers for debug printing
     // long long h_page_ranks[SEQ_LENGTH];
@@ -209,7 +219,11 @@ int main()
             // for (int i = 0; i < SEQ_LENGTH; i++)
             //     std::cout << std::dec << h_page_ranks[i] << " | " << h_ip_ranks[i] << "\n";
 
-            inferenceEngine.context->enqueueV3(stream);
+            if (!inferenceEngine.context->enqueueV3(stream))
+            {
+                std::cerr << "enqueueV3 failed\n";
+                continue; // skip this packet
+            }
             cudaStreamSynchronize(stream);
 
             // // Print raw output ranks from NN before decode
@@ -248,12 +262,13 @@ int main()
     cudaFree(pages);
     cudaFree(ips);
     cudaFree(anchor);
-    cudaFree(state);
+    // cudaFree(state);
     cudaFree(ip_tensor);
     cudaFree(pages_tensor);
     cudaFree(output_tensor);
     cudaStreamDestroy(stream);
 }
+
 // void benchmark_inference(
 //     LookupTable *page_table, LookupTable *ip_table,
 //     unsigned long long *pages, unsigned long long *ips,

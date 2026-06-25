@@ -2,10 +2,9 @@ import torch
 from OverNet import OverNet
 
 #INPUT_SIZE = 2
-SEQ_LEN = 256
+SEQ_LEN = 64
 D_MODEL = 256   
-D_STATE = 128
-VOCAB_SIZE=2**9
+VOCAB_SIZE=2**7
 net = OverNet(n_layers=1, d_model=D_MODEL, seq_len=SEQ_LEN, vocab_size=VOCAB_SIZE)
 
 
@@ -14,20 +13,20 @@ net.load_state_dict(torch.load("OverNet.pt", map_location="cpu"))
 
 net.eval()
 
-dummy_x = torch.randint(0, VOCAB_SIZE , (1, SEQ_LEN))
-dummy_state = torch.randn((1, D_STATE, D_MODEL))
+dummy_ip = torch.randint(0, VOCAB_SIZE , (1, SEQ_LEN))
+dummy_pages = torch.randint(0, VOCAB_SIZE , (1, SEQ_LEN))
 
 
-print(net(dummy_x, dummy_x, dummy_state))
+print(net(dummy_ip, dummy_pages))
 
 
 torch.onnx.export(
     net,
-    (dummy_x, dummy_x, dummy_state),
+    (dummy_ip, dummy_pages),
     "OverNet.onnx",
-    opset_version=17,
-    input_names=["ip", "pages", "state"],
-    output_names=["pred_pages", "new_state"]
+    opset_version=18,
+    input_names=["ip", "pages"],
+    output_names=["pred_pages"]
 )
 
 print("Exported to OverNet.onnx")

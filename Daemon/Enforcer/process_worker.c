@@ -107,7 +107,10 @@ static int worker_run(void *data)
                 mmap_read_unlock(worker->mm);
 
                 if (ret == 1)
+                {
                     put_page(page);
+                    pr_info("overseer_enforcer: successfully prefetched 0x%lx for pid %d\n", addr, worker->pid);
+                }
                 else if (ret < 0)
                     pr_warn("overseer_enforcer: failed to prefetch 0x%lx for pid %d\n",
                             addr, worker->pid);

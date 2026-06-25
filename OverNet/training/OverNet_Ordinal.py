@@ -22,7 +22,7 @@ class OverNet(nn.Module):
         self.register_buffer('encoder_pe', pe[:, :seq_len, :])
         self.register_buffer('decoder_pe', pe[:, seq_len:, :])
 
-        self.overstate = OverState(d_model, n_heads=4, dropout=dropout)
+        #self.overstate = OverState(d_model, n_heads=4, dropout=dropout)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -34,7 +34,7 @@ class OverNet(nn.Module):
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
 
-        self.output_queries = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
+        #self.output_queries = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
 
         decoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model,
@@ -55,11 +55,12 @@ class OverNet(nn.Module):
         self.page_map.clear()
         self._cache_0 = None
         self._cache_1 = None
+    
 
-    def forward(self, x, state):
+    
+    def forward(self, x, y):
         batch = x.shape[0]
 
-        # x = self.lookup(x)
         ip_ints   = x[:, :, 0]
         page_ints = x[:, :, 1]
 
@@ -71,16 +72,46 @@ class OverNet(nn.Module):
         fused  = self.dropout(fused)
 
         memory    = self.encoder(fused)
-        #new_state = self.overstate(memory, state)
-        new_state = state
-        #memory = torch.cat([memory, new_state], dim=1)
+        #new_state = state
 
-        queries = self.output_queries.expand(batch, -1, -1) + self.decoder_pe
-        out     = self.decoder(queries, memory)
-        out     = self.dropout(out)
-        out     = self.head(out)
+    # shift y right by one step; position 0's "previous" is the last input step
+        dec_in_page = torch.cat([page_ints[:, -1:], y[:, :-1]], dim=1)
 
-        return out, new_state
+        dec_page_h = self.page_embedding(dec_in_page)
+        dec_in     = dec_page_h + self.decoder_pe
+
+        tgt_mask = nn.Transformer.generate_square_subsequent_mask(dec_in.shape[1]).to(x.device)
+
+        out = self.decoder(dec_in, memory, tgt_mask=tgt_mask)
+        out = self.dropout(out)
+        out = self.head(out)
+
+        return out
+    # def forward(self, x, state):
+    #     batch = x.shape[0]
+
+    #     # x = self.lookup(x)
+    #     ip_ints   = x[:, :, 0]
+    #     page_ints = x[:, :, 1]
+
+    #     ip_h   = self.ip_embedding(ip_ints)
+    #     page_h = self.page_embedding(page_ints)
+
+    #     fused  = self.cross_attn(page_h, ip_h)
+    #     fused  = fused + self.encoder_pe
+    #     fused  = self.dropout(fused)
+
+    #     memory    = self.encoder(fused)
+    #     #new_state = self.overstate(memory, state)
+    #     new_state = state
+    #     #memory = torch.cat([memory, new_state], dim=1)
+
+    #     queries = self.output_queries.expand(batch, -1, -1) + self.decoder_pe
+    #     out     = self.decoder(queries, memory)
+    #     out     = self.dropout(out)
+    #     out     = self.head(out)
+
+    #     return out, new_state
 
     def _make_pe(self, length, d_model):
         position = torch.arange(length).unsqueeze(1).float()
