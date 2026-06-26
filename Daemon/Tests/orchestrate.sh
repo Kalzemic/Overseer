@@ -6,11 +6,7 @@
 # Usage:   ./orchestrate.sh <N_per_condition> <output.csv> [--dry-run]
 # Example: ./orchestrate.sh 30 results.csv
 #
-# Calls run_baseline.sh and run_overseer.sh (must be in the same dir).
-# Each sub-script prints exactly one CSV row to stdout.
-#
-# Tip: run `sudo -v` before invoking so your sudo timestamp is fresh; this
-# script also runs sudo -v up front and periodically to keep it alive.
+
 
 set -euo pipefail
 
@@ -39,7 +35,7 @@ TOTAL=${#SHUFFLED[@]}
 log "Plan: $N baseline + $N overseer = $TOTAL runs, randomized order"
 log "Output: $OUT"
 
-# Rough ETA: baseline ~6min, overseer ~5min  →  per-pair ~11min
+
 ETA_MIN=$(( N * 11 ))
 log "Rough ETA: ${ETA_MIN} minutes (~$(( ETA_MIN / 60 ))h $(( ETA_MIN % 60 ))m)"
 
@@ -49,7 +45,7 @@ if [ "$DRY_RUN" = "--dry-run" ]; then
     exit 0
 fi
 
-# Prime sudo so sub-scripts don't prompt mid-run
+
 sudo -v
 ( while true; do sudo -n true; sleep 60; kill -0 $$ 2>/dev/null || exit; done ) &
 SUDO_KEEPALIVE_PID=$!
@@ -87,7 +83,7 @@ for item in "${SHUFFLED[@]}"; do
     echo "$ROW" >> "$OUT"
     log "→ $ROW"
 
-    # Brief pause to let kernel/disk settle
+
     sleep 2
 done
 

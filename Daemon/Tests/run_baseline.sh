@@ -56,9 +56,7 @@ ELAPSED=$(echo "$LOGS"    | grep -oP 'elapsed\s*:\s*\K[0-9.]+'   | head -1 || tr
 THROUGHPUT=$(echo "$LOGS" | grep -oP 'throughput:\s*\K[0-9.]+'   | head -1 || true)
 
 # ── Parse fault counts from last stat snapshot ──────────────────────────────
-# /proc/[pid]/stat layout: pid (comm) state ppid ... where (comm) may contain
-# spaces and parens. The clean way is to split on the LAST ") ".
-#   After stripping through ") ":  field 8 = minflt (orig 10), field 10 = majflt (orig 12)
+
 MINFLT=""
 MAJFLT=""
 if [ -n "$LAST_STAT" ]; then
