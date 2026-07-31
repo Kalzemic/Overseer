@@ -35,8 +35,7 @@ overseer_collector
 **Matmul/matmul
 **Matmul/matmul_fast
 **Matmul/matmul_old
-!OverNet/Data/Matmul/*.bin
-!OverNet/Data/hilbert/*.bin
+
 # ── Project-specific data/dirs to ignore ────────────────────────
 OverNet/prototyping/
 OverNet/model
@@ -55,3 +54,17 @@ OverNet/Data/**
 !OverNet/Data/Matmul/**
 !OverNet/Data/hilbert/
 !OverNet/Data/hilbert/**
+
+# ── But still block binary/model files inside those re-included dirs ────
+OverNet/Data/Matmul/**/*.bin
+OverNet/Data/Matmul/**/*.pt
+OverNet/Data/Matmul/**/*.onnx
+OverNet/Data/Matmul/**/*.trt
+OverNet/Data/Matmul/**/*.engine
+OverNet/Data/Matmul/**/*.data
+OverNet/Data/hilbert/**/*.bin
+OverNet/Data/hilbert/**/*.pt
+OverNet/Data/hilbert/**/*.onnx
+OverNet/Data/hilbert/**/*.trt
+OverNet/Data/hilbert/**/*.engine
+OverNet/Data/hilbert/**/*.data
