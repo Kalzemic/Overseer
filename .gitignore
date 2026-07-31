@@ -53,6 +53,7 @@ OverNet/Data/**
 !OverNet/Data/Matmul/
 !OverNet/Data/Matmul/**
 !OverNet/Data/hilbert/
+OverNet/Data/hilbert/data
 !OverNet/Data/hilbert/**
 
 # ── But still block binary/model files inside those re-included dirs ────
