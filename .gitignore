@@ -10,10 +10,10 @@ OverNet/model
 *.data
 *.bin
 example*
-marmul 
-matmul 
-matmul_fast
-matmul_old
+**Matmul/marmul 
+**Matmul/matmul 
+**Matmul/matmul_fast
+**Matmul/matmul_old
 trace_faults.txt
 OverNet/training/data/
 drivers/
@@ -43,4 +43,4 @@ overnet_logs.txt
 
 #exe files: 
 overseer_collector
-OverNet
+**/build/OverNet
