@@ -1,0 +1,5 @@
+matmul_bench
+trace_faults*.txt
+matmul_run_*.bin
+matmul_*.bin
+*.dat

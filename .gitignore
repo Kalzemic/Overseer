@@ -1,47 +1,57 @@
-OverNet/prototyping/
-OverNet/Data/
-!OverNet/Data/Matmul/
-!OverNet/Data/hilbert/
-OverNet/Data/Matmul/data/
-OverNet/model
+# ── Model artifacts ─────────────────────────────────────────────
 *.pt
 *.onnx
 *.trt
 *.engine
 *.data
 *.bin
-example*
-**Matmul/marmul 
-**Matmul/matmul 
-**Matmul/matmul_fast
-**Matmul/matmul_old
-trace_faults.txt
-OverNet/training/data/
-drivers/
+*.png
+
+# ── Build artifacts ─────────────────────────────────────────────
 *.o
 *.ko
 *.mod
+*.mod.*
+*.cmd
 *.order
 *.symvers
-*/overseer_collector
-*.vscode
-*.trt
-*.cmd
-*.mod.*
-test.*
+*.cmake
+CMakeCache.txt
+CMakeFiles/
+__pycache__
+
+# ── Generated headers ───────────────────────────────────────────
 skel.bpf.h
 vmlinux.h
-*.cmake
 
-CMakeCache.txt
-go.mod
-__pycache__
-*.png
-*.onnx
-CMakeFiles/
-overnet_logs.txt
+# ── Editor/IDE ──────────────────────────────────────────────────
+*.vscode
 
-
-#exe files: 
+# ── Executables ─────────────────────────────────────────────────
 overseer_collector
+*/overseer_collector
 **/build/OverNet
+**Matmul/marmul
+**Matmul/matmul
+**Matmul/matmul_fast
+**Matmul/matmul_old
+!OverNet/Data/Matmul/*.bin
+!OverNet/Data/hilbert/*.bin
+# ── Project-specific data/dirs to ignore ────────────────────────
+OverNet/prototyping/
+OverNet/model
+OverNet/training/data/
+OverNet/Data/Matmul/data/
+drivers/
+example*
+test.*
+trace_faults.txt
+overnet_logs.txt
+go.mod
+
+# ── Data directory: ignore everything, then re-include Matmul + hilbert ──
+OverNet/Data/**
+!OverNet/Data/Matmul/
+!OverNet/Data/Matmul/**
+!OverNet/Data/hilbert/
+!OverNet/Data/hilbert/**
