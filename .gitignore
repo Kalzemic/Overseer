@@ -2,6 +2,7 @@ OverNet/prototyping/
 OverNet/Data/
 !OverNet/Data/Matmul/
 !OverNet/Data/hilbert/
+OverNet/Data/Matmul/data/
 OverNet/model
 *.pt
 *.onnx
