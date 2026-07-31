@@ -13,6 +13,10 @@ public:
     int *map_values;
 
     LookupTable();
+    LookupTable(const LookupTable&) = delete;
+    LookupTable(LookupTable&&) noexcept;
+    LookupTable &operator=(const LookupTable&) = delete;
+    LookupTable &operator=(LookupTable&&) noexcept;
     __device__ int insert(unsigned long long addr);
     __device__ int lookup(unsigned long long addr);
     __device__ unsigned long long addr_lookup(int rank);

@@ -15,8 +15,8 @@ OUT="${2:?usage: $0 <N_per_condition> <output.csv> [--dry-run]}"
 DRY_RUN="${3:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASELINE="$SCRIPT_DIR/run_baseline.sh"
-OVERSEER="$SCRIPT_DIR/run_overseer.sh"
+BASELINE="$SCRIPT_DIR/matmul_baseline.sh"
+OVERSEER="$SCRIPT_DIR/matmul_overseer.sh"
 
 [ -x "$BASELINE" ] || { echo "missing or non-executable: $BASELINE" >&2; exit 1; }
 [ -x "$OVERSEER" ] || { echo "missing or non-executable: $OVERSEER" >&2; exit 1; }

@@ -38,12 +38,17 @@ batch_size = 64
 # MLPERF_TRAIN = []
 # MLPERF_VAL = []
 
-HILBERT_TRAIN = [f'./data/hilbert/hilbert_{i}.bin' for i in range(1,10)]
+#HILBERT_TRAIN = [f'./data/hilbert/hilbert_{i}.bin' for i in range(1,10)]
 #HILBERT_TRAIN = ['./data/hilbert/hilbert_1.bin']
-HILBERT_VAL = ['./data/hilbert/hilbert_10.bin']
+#HILBERT_VAL = ['./data/hilbert/hilbert_10.bin']
 #STEPS_PER_EPOCH = 2120
 #STEPS_PER_EPOCH = 2313
-STEPS_PER_EPOCH = 9225
+
+MATMUL_TRAIN = [f'./data/matmul/matmul_{i}.bin' for i in range(1,10)]
+MATMUL_VAL = [f'./data/matmul/matmul_10.bin']
+#STEPS_PER_EPOCH = 9225
+STEPS_PER_EPOCH = 34385
+#STEPS_PER_EPOCH = 828
 total_steps = epochs * STEPS_PER_EPOCH
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -61,8 +66,8 @@ def compute_coverage(pred_page_ranks, true_page_ranks):
 
 
 def main():
-    train_data = MemDataset([*HILBERT_TRAIN], seq_len=seq_length, batch_size=batch_size)
-    val_data   = MemDataset([*HILBERT_VAL],   seq_len=seq_length, batch_size=batch_size)
+    train_data = MemDataset([*MATMUL_TRAIN], seq_len=seq_length, batch_size=batch_size)
+    val_data   = MemDataset([*MATMUL_VAL],   seq_len=seq_length, batch_size=batch_size)
 
     overnet = OverNet(
         n_layers=layers, seq_len=seq_length, n_heads=heads,

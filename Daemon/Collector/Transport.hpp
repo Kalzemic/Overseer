@@ -28,14 +28,16 @@ public:
 
 class SocketTransporter : public ITransporter
 {
-    int sockfd;
-    struct sockaddr_in addr;
+    int sockfd{-1};
+    struct sockaddr_in addr{};
 
 public:
     SocketTransporter(std::string ip, int port);
     SocketTransporter(const SocketTransporter &other) = delete;
+    SocketTransporter(SocketTransporter &&other) noexcept; 
     SocketTransporter &operator=(const SocketTransporter &other) = delete;
-    ~SocketTransporter()
+    SocketTransporter &operator=(SocketTransporter &&other) noexcept;
+    ~SocketTransporter() override
     {
         if (sockfd >= 0)
             close(this->sockfd);

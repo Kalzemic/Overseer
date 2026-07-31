@@ -87,31 +87,7 @@ class OverNet(nn.Module):
         out = self.head(out)
 
         return out
-    # def forward(self, x, state):
-    #     batch = x.shape[0]
 
-    #     # x = self.lookup(x)
-    #     ip_ints   = x[:, :, 0]
-    #     page_ints = x[:, :, 1]
-
-    #     ip_h   = self.ip_embedding(ip_ints)
-    #     page_h = self.page_embedding(page_ints)
-
-    #     fused  = self.cross_attn(page_h, ip_h)
-    #     fused  = fused + self.encoder_pe
-    #     fused  = self.dropout(fused)
-
-    #     memory    = self.encoder(fused)
-    #     #new_state = self.overstate(memory, state)
-    #     new_state = state
-    #     #memory = torch.cat([memory, new_state], dim=1)
-
-    #     queries = self.output_queries.expand(batch, -1, -1) + self.decoder_pe
-    #     out     = self.decoder(queries, memory)
-    #     out     = self.dropout(out)
-    #     out     = self.head(out)
-
-    #     return out, new_state
 
     def _make_pe(self, length, d_model):
         position = torch.arange(length).unsqueeze(1).float()
@@ -136,20 +112,20 @@ class IPPageCrossAttention(nn.Module):
         return self.norm(page_h + self.dropout(attn_out))
 
 
-class OverState(nn.Module):
-    def __init__(self, d_model, n_heads=4, dropout=0.1):
-        super().__init__()
-        self.cross_attn = nn.MultiheadAttention(
-            d_model, n_heads, dropout=dropout, batch_first=True
-        )
-        self.norm = nn.LayerNorm(d_model)
+# class OverState(nn.Module):
+#     def __init__(self, d_model, n_heads=4, dropout=0.1):
+#         super().__init__()
+#         self.cross_attn = nn.MultiheadAttention(
+#             d_model, n_heads, dropout=dropout, batch_first=True
+#         )
+#         self.norm = nn.LayerNorm(d_model)
 
-    def forward(self, memory, state):
-        """
-        memory: (batch, seq_len, d_model) — full encoder output
-        state:  (batch, d_state, d_model) — previous state matrix
+#     def forward(self, memory, state):
+#         """
+#         memory: (batch, seq_len, d_model) — full encoder output
+#         state:  (batch, d_state, d_model) — previous state matrix
 
-        Returns new_state: (batch, d_state, d_model)
-        """
-        attended, _ = self.cross_attn(query=state, key=memory, value=memory)
-        return self.norm(state + attended)
+#         Returns new_state: (batch, d_state, d_model)
+#         """
+#         attended, _ = self.cross_attn(query=state, key=memory, value=memory)
+#         return self.norm(state + attended)
