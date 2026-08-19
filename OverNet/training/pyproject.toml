@@ -3,4 +3,10 @@
 name = "overnet"
 version = "0.1.0"
 requires-python = ">=3.13"
-dependencies = ["torch", "transformers", "numpy", "matplotlib", "tqdm"]
+dependencies = ["torch", "numpy", "matplotlib", "tqdm"]
+
+[project.optional-dependencies]
+# TensorRT is required only for the appliance-side ONNX-to-TRT conversion (engine.py).
+# On Jetson, TensorRT is provided by JetPack, so do NOT install this extra there.
+# On x86 with a discrete NVIDIA GPU, install with: pip install .[deployment]
+deployment = ["tensorrt"]

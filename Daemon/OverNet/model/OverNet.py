@@ -15,7 +15,7 @@ class CachedAttention(nn.Module):
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
 
-        # Names MUST match nn.MultiheadAttention for state_dict loading
+        
         self.in_proj_weight = nn.Parameter(torch.empty(3 * d_model, d_model))
         self.in_proj_bias = nn.Parameter(torch.empty(3 * d_model))
         self.out_proj = nn.Linear(d_model, d_model)

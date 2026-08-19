@@ -23,9 +23,9 @@ DRY_RUN="${3:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 declare -A SCRIPTS=(
-    [baseline]="$SCRIPT_DIR/run_baseline.sh"
-    [overseer_local]="$SCRIPT_DIR/run_overseer.sh"
-    [overseer_remote]="$SCRIPT_DIR/run_overseer_remote.sh"
+    [baseline]="$SCRIPT_DIR/hilbert_baseline.sh"
+    [overseer_local]="$SCRIPT_DIR/hilbert_overseer.sh"
+    [overseer_remote]="$SCRIPT_DIR/hilbert_overseer_remote.sh"
 )
 
 for cond in "${!SCRIPTS[@]}"; do

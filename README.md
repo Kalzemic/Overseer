@@ -6,6 +6,70 @@ Overseer observes page faults from a running HPC target, predicts which pages th
 
 ![System overview](docs/figures/system-overview.png)
 
+## Architecture
+
+Overseer is a three-stage pipeline. The stages are physically and conceptually decoupled and communicate over UDP.
+
+**Collector.** Runs on the same host as the target. Intercepts every userspace page fault in the target's cgroup ([kernel-space BPF program](Daemon/Collector/FaultCollect.bpf.c#L13)) and assembles per-PID sliding windows of 64 recent (instruction pointer, page address) pairs ([userspace handler](Daemon/Collector/main.cpp#L11) and [polling loop](Daemon/Collector/main.cpp#L108)). When a window fills, it is sent to the inference appliance.
+
+![Collector architecture](docs/figures/collector-architecture.png)
+
+**OverNet.** Runs on network-attached inference hardware. Receives a fault window, encodes IPs and pages as ordinal ranks over per-instance delta vocabularies ([encode/decode CUDA kernels](Daemon/OverNet/encode.cu), [LookupTable](Daemon/OverNet/Lookup.cuh#L2)), runs a Transformer encoder-decoder ([training-time model](OverNet/training/OverNet_Ordinal.py#L7), [deployment model with KV-cached decoder](Daemon/OverNet/model/OverNet.py#L127)), and emits a predicted sequence of future page addresses. Predictions are returned to the host over UDP, carrying the originating PID for routing.
+
+![OverNet architecture](docs/figures/overnet-architecture.png)
+
+**Enforcer.** A kernel module on the target's host. The [dispatcher](Daemon/Enforcer/enforcer.c) receives OverNet's output packets and routes each to a per-PID kernel worker attached to the corresponding process's memory descriptor, spawning a new worker on demand if none exists. Each [worker](Daemon/Enforcer/process_worker.c#L106) forces the predicted pages into residency in the target's address space before the target faults on them.
+
+![Enforcer architecture](docs/figures/enforcer-architecture.png)
+
+## Repository layout
+
+Daemon/ Production pipeline running on the target host and the appliance
+Collector/ eBPF observation component (host)
+OverNet/ Production inference code (appliance)
+Enforcer/ Kernel module (host)
+
+OverNet/ Training environment (separate from Daemon/OverNet, which is deployment)
+Data/ Benchmark source (Hilbert, matmul), BPF trace-recording scripts,
+and utilities to convert traces into binary training tensors
+training/ PyTorch model definition, dataloaders, and training scripts
+
+Tests/ Benchmark orchestration: per-workload scripts
+([hilbert_test](Tests/orchestrate_hilbert.sh), [matmul_test](Tests/orchestrate_matmul.sh)),
+CSV result logging, and metrics.py which produces
+the runtime and fault histograms shown above
+
+## Building
+
+All components build from source; there are no prebuilt binaries in the repository. Each component has its own Makefile.
+
+- **Collector**: builds against `libbpf`. Requires kernel headers matching the host kernel.
+- **OverNet (production)**: requires CUDA and TensorRT on the inference appliance. The runtime expects a serialized TensorRT engine file, produced from an ONNX export of a trained model.
+- **Enforcer**: builds as an out-of-tree kernel module against the running host kernel's headers.
+
+## Running
+
+Running Overseer end-to-end requires:
+
+1. A trained OverNet model. Train in the top-level `OverNet/` environment using PyTorch, then export to ONNX and compile to a TensorRT engine on the inference appliance.
+2. The inference appliance running the OverNet daemon and listening for Collector packets.
+3. The Enforcer kernel module loaded on the target host.
+4. The Collector attached to the target's cgroup, configured with the appliance's IP and port.
+5. The Enforcer configured to listen for prediction packets from the appliance.
+
+The scripts in `Tests/` orchestrate all of this for the two benchmark workloads and produce the CSV files consumed by `metrics.py`.
+
+For in Depth instruction see [SETUP.md](SETUP.md)
+
+## Benchmarks
+
+Two workloads are included:
+
+- **Hilbert curve traversal:** spatial locality at short range, data-dependent at longer range. An intermediate operating point for the predictor.
+- **Dense matrix multiplication:** blocked matmul over mmap'd operands. Highly regular within blocks with predictable inter-block transitions. A favorable operating point.
+
+Both are memory-bound with working sets that exceed host RAM, so baseline runtime is dominated by major page faults.
+
 ## Results
 
 ### Matrix Multiplication
@@ -29,65 +93,3 @@ The three configurations are cleanly separated on runtime: Baseline clusters at 
     <td><img src="docs/figures/hilbert-majfaults.png" alt="Hilbert major faults"></td>
   </tr>
 </table>
-
-## Architecture
-
-Overseer is a three-stage pipeline. The stages are physically and conceptually decoupled and communicate over UDP.
-
-**Collector.** Runs on the same host as the target. Intercepts every userspace page fault in the target's cgroup and assembles per-PID sliding windows of 64 recent (instruction pointer, page address) pairs. When a window fills, it is sent to the inference appliance.
-
-![Collector architecture](docs/figures/collector-architecture.png)
-
-**OverNet.** Runs on network-attached inference hardware. Receives a fault window, encodes IPs and pages as ordinal ranks over per-instance delta vocabularies, runs a transformer encoder-decoder, and emits a predicted sequence of future page addresses. Predictions are returned to the host over UDP, carrying the originating PID for routing.
-
-![OverNet architecture](docs/figures/overnet-architecture.png)
-
-**Enforcer.** A kernel module on the target's host. Maintains a pool of per-PID kernel worker threads, each attached to a target's memory descriptor. Each worker forces the predicted pages into residency in the target's address space before the target faults on them.
-
-![Enforcer architecture](docs/figures/enforcer-architecture.png)
-
-## Repository layout
-
-Daemon/ Production pipeline running on the target host and the appliance
-Collector/ eBPF observation component (host)
-OverNet/ Production inference code (appliance)
-Enforcer/ Kernel module (host)
-
-OverNet/ Training environment (separate from Daemon/OverNet, which is deployment)
-Data/ Benchmark source (Hilbert, matmul), BPF trace-recording scripts,
-and utilities to convert traces into binary training tensors
-training/ PyTorch model definition, dataloaders, and training scripts
-
-Tests/ Benchmark orchestration
-Per-configuration shell scripts (baseline / local / remote for each
-workload), CSV result logging, and metrics.py which produces the
-runtime and fault histograms shown above
-
-## Building
-
-All components build from source; there are no prebuilt binaries in the repository. Each component has its own Makefile.
-
-- **Collector**: builds against `libbpf`. Requires kernel headers matching the host kernel.
-- **OverNet (production)**: requires CUDA and TensorRT on the inference appliance. The runtime expects a serialized TensorRT engine file, produced from an ONNX export of a trained model.
-- **Enforcer**: builds as an out-of-tree kernel module against the running host kernel's headers.
-
-## Running
-
-Running Overseer end-to-end requires:
-
-1. A trained OverNet model. Train in the top-level `OverNet/` environment using PyTorch, then export to ONNX and compile to a TensorRT engine on the inference appliance.
-2. The inference appliance running the OverNet daemon and listening for Collector packets.
-3. The Enforcer kernel module loaded on the target host.
-4. The Collector attached to the target's cgroup, configured with the appliance's IP and port.
-5. The Enforcer configured to listen for prediction packets from the appliance.
-
-The scripts in `Tests/` orchestrate all of this for the two benchmark workloads and produce the CSV files consumed by `metrics.py`.
-
-## Benchmarks
-
-Two workloads are included:
-
-- **Hilbert curve traversal:** spatial locality at short range, data-dependent at longer range. An intermediate operating point for the predictor.
-- **Dense matrix multiplication:** blocked matmul over mmap'd operands. Highly regular within blocks with predictable inter-block transitions. A favorable operating point.
-
-Both are memory-bound with working sets that exceed host RAM, so baseline runtime is dominated by major page faults.

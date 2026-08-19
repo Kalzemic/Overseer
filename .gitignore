@@ -70,3 +70,10 @@ OverNet/Data/hilbert/**/*.onnx
 OverNet/Data/hilbert/**/*.trt
 OverNet/Data/hilbert/**/*.engine
 OverNet/Data/hilbert/**/*.data
+
+
+# --- Deprecated src code 
+Daemon/OverNet/real_main.cpp
+Overnet/training/overnet.egg-info/
+OverNet/training/overnet_trace.json
+Tests/matmul/matmul
