@@ -1,6 +1,6 @@
 # Setup
 
-This document walks through building each component and (if desired) running Overseer end-to-end. Full end-to-end operation requires two hosts and an inference appliance with a GPU capable of running TensorRT.
+This document walks through building each component and (if desired) running Overseer end-to-end. Full end-to-end operation requires two machines: a target host (which runs the workload, Collector, and Enforcer) and an inference appliance (which runs OverNet on a GPU capable of running TensorRT).
 
 ## Prerequisites
 
