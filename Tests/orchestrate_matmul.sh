@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 #
-# orchestrate.sh — run N baseline + N overseer trials in random interleaved
-# order. Writes a CSV with one row per run.
+# orchestrate_all.sh — run N trials each of: baseline, overseer-local,
+# overseer-remote (jetson), in randomized interleaved order. Writes one
+# CSV with rows for all three conditions.
 #
-# Usage:   ./orchestrate.sh <N_per_condition> <output.csv> [--dry-run]
-# Example: ./orchestrate.sh 30 results.csv
+# Usage:   ./orchestrate_all.sh <N_per_condition> <output.csv> [--dry-run]
+# Example: ./orchestrate_all.sh 30 results.csv
 #
-
+# Requires three sibling scripts:
+#   run_baseline.sh
+#   run_overseer.sh         (local OverNet — runs on host GPU)
+#   run_overseer_remote.sh  (remote OverNet — runs on Jetson)
+#
+# Each sub-script must print exactly one CSV row to stdout.
 
 set -euo pipefail
 
@@ -15,29 +21,35 @@ OUT="${2:?usage: $0 <N_per_condition> <output.csv> [--dry-run]}"
 DRY_RUN="${3:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BASELINE="$SCRIPT_DIR/matmul_baseline.sh"
-OVERSEER="$SCRIPT_DIR/matmul_overseer.sh"
 
-[ -x "$BASELINE" ] || { echo "missing or non-executable: $BASELINE" >&2; exit 1; }
-[ -x "$OVERSEER" ] || { echo "missing or non-executable: $OVERSEER" >&2; exit 1; }
+declare -A SCRIPTS=(
+    [baseline]="$SCRIPT_DIR/matmul_baseline.sh"
+    [overseer_local]="$SCRIPT_DIR/matmul_overseer.sh"
+    [overseer_remote]="$SCRIPT_DIR/matmul_overseer_remote.sh"
+)
 
-log() { echo "[orchestrate] $*" >&2; }
+for cond in "${!SCRIPTS[@]}"; do
+    [ -x "${SCRIPTS[$cond]}" ] || { echo "missing or non-executable: ${SCRIPTS[$cond]}" >&2; exit 1; }
+done
+
+log() { echo "[orchestrate-all] $*" >&2; }
 
 # ── Build randomized interleaved sequence ──────────────────────────────────
 SEQ=()
 for i in $(seq 1 "$N"); do
-    SEQ+=("baseline:$i")
-    SEQ+=("overseer:$i")
+    for cond in "${!SCRIPTS[@]}"; do
+        SEQ+=("$cond:$i")
+    done
 done
 mapfile -t SHUFFLED < <(printf '%s\n' "${SEQ[@]}" | shuf)
 
 TOTAL=${#SHUFFLED[@]}
-log "Plan: $N baseline + $N overseer = $TOTAL runs, randomized order"
+log "Plan: $N x ${#SCRIPTS[@]} conditions = $TOTAL runs, randomized order"
 log "Output: $OUT"
 
-
-ETA_MIN=$(( N * 11 ))
-log "Rough ETA: ${ETA_MIN} minutes (~$(( ETA_MIN / 60 ))h $(( ETA_MIN % 60 ))m)"
+# Rough ETA: baseline ~30s, local ~22s, remote ~30s after warmup, plus ~5s overhead each
+ETA_MIN=$(( N * 2 ))   # ~2 min per triplet
+log "Rough ETA: ${ETA_MIN} minutes"
 
 if [ "$DRY_RUN" = "--dry-run" ]; then
     log "Dry run — sequence below, exiting without executing:"
@@ -45,7 +57,7 @@ if [ "$DRY_RUN" = "--dry-run" ]; then
     exit 0
 fi
 
-
+# Prime sudo and keep alive
 sudo -v
 ( while true; do sudo -n true; sleep 60; kill -0 $$ 2>/dev/null || exit; done ) &
 SUDO_KEEPALIVE_PID=$!
@@ -64,11 +76,11 @@ for item in "${SHUFFLED[@]}"; do
     RUN_ID="${item#*:}"
     log "── [$RUN_NUM/$TOTAL] $CONDITION run_id=$RUN_ID ──"
 
-    case "$CONDITION" in
-        baseline) SUB="$BASELINE" ;;
-        overseer) SUB="$OVERSEER" ;;
-        *) log "unknown condition: $CONDITION"; exit 1 ;;
-    esac
+    SUB="${SCRIPTS[$CONDITION]:-}"
+    if [ -z "$SUB" ]; then
+        log "unknown condition: $CONDITION"
+        continue
+    fi
 
     set +e
     ROW=$("$SUB" "$RUN_ID")
@@ -82,7 +94,6 @@ for item in "${SHUFFLED[@]}"; do
 
     echo "$ROW" >> "$OUT"
     log "→ $ROW"
-
 
     sleep 2
 done

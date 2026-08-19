@@ -16,17 +16,17 @@ def remove_outliers_iqr(s, k=1.5):
 
 runtime_local    = remove_outliers_iqr(get_series('elapsed_s', 'overseer_local'))
 runtime_baseline = get_series('elapsed_s', 'baseline')
-#runtime_remote   = get_series('elapsed_s', 'overseer_remote')
+runtime_remote   = get_series('elapsed_s', 'overseer_remote')
 
 
 majflt_local    = remove_outliers_iqr(get_series('majflt', 'overseer_local'))
 majflt_baseline = get_series('majflt', 'baseline')
-#majflt_remote   = get_series('majflt', 'overseer_remote')
+majflt_remote   = get_series('majflt', 'overseer_remote')
 
 
 plt.hist(runtime_local, label='Overseer Local', alpha=0.6)
 plt.hist(runtime_baseline, label='Baseline', alpha=0.6)
-#plt.hist(runtime_remote, label='Overseer Remote', alpha=0.6)
+plt.hist(runtime_remote, label='Overseer Remote', alpha=0.6)
 
 plt.legend()
 plt.title('Runtime')
@@ -36,7 +36,7 @@ plt.close()
 
 plt.hist(majflt_local, label='Overseer Local', alpha=0.6)
 plt.hist(majflt_baseline, label='Baseline', alpha=0.6)
-#plt.hist(majflt_remote, label='Overseer Remote', alpha=0.6)
+plt.hist(majflt_remote, label='Overseer Remote', alpha=0.6)
 
 plt.legend()
 plt.title('Major Faults')

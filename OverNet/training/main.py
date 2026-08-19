@@ -241,7 +241,6 @@ def plot_history(history):
     axes[2].legend()
     plt.tight_layout()
     plt.savefig('training_history_ordinal.png')
-    plt.show()
 
 
 if __name__ == '__main__':

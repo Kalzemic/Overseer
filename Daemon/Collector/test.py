@@ -1,8 +1,8 @@
 import socket
 import struct
 
-BATCH_SIZE = 16
-PORT = 9080
+BATCH_SIZE = 64
+PORT = 9090
 
 # 1 int32 + 64 uint64 + 64 uint64
 FMT = f'<i{BATCH_SIZE}Q{BATCH_SIZE}Q'
